@@ -1,0 +1,18 @@
+﻿@page "/native"
+
+<PageTitle>Native Functions</PageTitle>
+
+<h2>Native Functions</h2>
+
+<GenerateExcuse @bind-Prompt="prompt" @bind-HideReasonInput="hideReasonInput" />
+
+@code {
+    private string prompt = @"Generate a creative reason or excuse for the given event. Be creative and be funny. Let your imagination run wild.
+
+Event:I am running late.
+Excuse:I was being held ransom by giraffe gangsters.
+
+Event:{{ReasonSkill.RandomReason}}";
+
+    private bool hideReasonInput = true;
+}

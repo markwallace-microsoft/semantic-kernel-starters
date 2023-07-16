@@ -1,0 +1,84 @@
+﻿<p>Enter details of the Azure OpenAI or Open AI endpoint to use.</p>
+
+<div class="div-form">
+    <label for="modelId">Model Id:</label>
+    <input id="modelId" @bind="ModelId" />
+</div>
+<div class="div-form">
+    <label for="endpoint">Endpoint:</label>
+    <input id="endpoint" @bind="Endpoint" />
+</div>
+<div class="div-form">
+    <label for="apiKey">API Key:</label>
+    <input id="apiKey" type="password" @bind="ApiKey" />
+</div>
+
+<p>Prompt that will be used to generate an excuse.</p>
+
+<div class="div-form" hidden="@HideReasonInput">
+    <label for="input">Reason:</label>
+    <input id="input" @bind="Input" />
+</div>
+<div class="div-form">
+    <label for="prompt">Prompt:</label>
+    <textarea id="prompt" @bind="Prompt" />
+</div>
+
+<div>
+    <button class="btn btn-primary" @onclick="ExecuteFunction">Generate Excuse</button>
+</div>
+
+<pre role="status">@Response</pre>
+
+@code {
+    private string Response { get; set; } = string.Empty;
+    public string ModelId { get; set; } = string.Empty;
+    public string Endpoint { get; set; } = string.Empty;
+    public string ApiKey { get; set; } = string.Empty;
+    public string Input { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Prompt { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> PromptChanged { get; set; }
+
+    [Parameter]
+    public bool HideReasonInput { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<bool> HideReasonInputChanged { get; set; }
+
+    private async Task ExecuteFunction()
+    {
+        Response = $"Executing function: {ModelId}";
+
+        using (var httpClient = new HttpClient())
+        {
+            var kernel = SemanticKernelUtils.CreateKernel(httpClient, ModelId, Endpoint, ApiKey, EndpointType.TextCompletion);
+
+            kernel.ImportSkill(new ReasonSkill(), nameof(ReasonSkill));
+
+            var excuse = kernel.CreateSemanticFunction(Prompt);
+            excuse.SetAIService(() => kernel.GetService<ITextCompletion>());
+
+            var context = kernel.CreateNewContext();
+            context.Variables.Update(Input);
+            Response = await kernel.PromptTemplateEngine.RenderAsync(Prompt, context);
+
+            var output = await kernel.RunAsync(Input, excuse);
+
+            if (output.ErrorOccurred)
+            {
+                Response = output.LastErrorDescription;
+
+                Console.Error.WriteLine(output.LastException?.ToString());
+            }
+            else
+            {
+                Response += output.Result;
+            }
+        }
+    }
+
+}

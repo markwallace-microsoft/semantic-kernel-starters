@@ -1,0 +1,81 @@
+﻿@page "/semantic"
+
+@inject IConfiguration Configuration
+
+<PageTitle>Semantic Functions</PageTitle>
+
+<h2>Semantic Functions</h2>
+
+<p>Enter details of the Azure OpenAI or Open AI endpoint to use.</p>
+
+<div class="div-form">
+    <label for="modelId">Model Id:</label>
+    <input id="modelId" @bind="modelId" />
+</div>
+<div class="div-form">
+    <label for="endpoint">Endpoint:</label>
+    <input id="endpoint" @bind="endpoint" />
+</div>
+<div class="div-form">
+    <label for="apiKey">API Key:</label>
+    <input id="apiKey" type="password" @bind="apiKey" />
+</div>
+
+<p>Enter the reason you need an excuse.</p>
+
+<div class="div-form">
+    <label for="input">Reason:</label>
+    <input id="input" @bind="input" />
+</div>
+<div class="div-form">
+    <label for="prompt">Prompt:</label>
+    <textarea id="prompt" @bind="prompt" />
+</div>
+
+<div>
+    <button class="btn btn-primary" @onclick="ExecuteFunction">Generate Excuse</button>
+</div>
+
+<p role="status">Excuse: @response</p>
+
+@code {
+    private string response = string.Empty;
+
+    private string modelId = string.Empty;
+    private string endpoint = string.Empty;
+    private string apiKey = string.Empty;
+    private string input = string.Empty;
+
+    private string prompt = @"Generate a creative reason or excuse for the given event. Be creative and be funny. Let your imagination run wild.
+
+Event:I am running late.
+Excuse:I was being held ransom by giraffe gangsters.
+
+Event:{{$input}}";
+
+    private async Task ExecuteFunction()
+    {
+        response = $"Executing function: {modelId}";
+
+        using (var httpClient = new HttpClient())
+        {
+            var kernel = SemanticKernelUtils.CreateKernel(httpClient, modelId, endpoint, apiKey, EndpointType.TextCompletion);
+
+            var excuse = kernel.CreateSemanticFunction(prompt);
+            excuse.SetAIService(() => kernel.GetService<ITextCompletion>());
+
+            var output = await kernel.RunAsync(input, excuse);
+
+            if (output.ErrorOccurred)
+            {
+                response = output.LastErrorDescription;
+
+                Console.Error.WriteLine(output.LastException?.ToString());
+            }
+            else
+            {
+                response = output.Result;
+            }
+        }
+    }
+}
